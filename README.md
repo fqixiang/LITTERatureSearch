@@ -1,0 +1,2 @@
+# LITTERatureSearch
+Repository for our work on the CCSS Complexaton Challenge 5: Trawling through the rubbish: Data mining of the scientific literature on marine plastic pollution.
