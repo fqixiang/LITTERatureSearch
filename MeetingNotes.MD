@@ -1,3 +1,37 @@
+# Meeting 20210115
+Goal: learn from Sophie and Mikael about the data and papers they had collected before.
+
+## Feedback from the challenge owners
+### Sophie
+* She provided a word file containing her tips on identifying the relevant literature (e.g. what keywords to look for)
+* She used only Google Scholar and LITTERBASE for her search
+* She focused only on the Atlantic
+* She will share her final selection of papers. Unfortunately, she did not keep track of her search process and all irrelevant papers had been deleted
+* In her experience, most data are available as supplementary materials online.
+
+### Mikael
+* He will share information about the papers where he had to contact authors for data
+* He will share the collected data set and the annotated data set
+* He used mainly Google Scholar
+
+### Erik
+* Would be nice to be able to flag papers where the data are not presented but might be available via contact with the authors
+* But it's not so important
+* Most important columns in Mikael's data spreadsheet: BCGHIJ (this might not be 100% correct; good to verify)
+
+## Next steps (discussion among the team)
+* We will work together on labelling some data (esp. getting some irrelevant papers)
+* Qixiang: 
+  * Prepare a data set with titles and abstracts, from Scopus
+  * Check LITTERBASE
+  * Work on getting meta-data for the papers
+* Sebastian:
+  * Prediction models
+* Mehran:
+  * Code for batch-downloading papers (both open-source and not)
+
+
+
 # Meeting 20210108
 [The presentation](https://docs.google.com/presentation/d/1EIYqbjCgD7ClhMcrJbf8yekJ5Ap-mRKtUY0Fkku5QLU/edit?usp=sharing)
 
