@@ -157,3 +157,97 @@ remaining_titles.iloc[0]
 
 # %% join the data set with keywords, journal name and link
 
+
+
+# %% GBM
+from sklearn.ensemble import GradientBoostingClassifier
+clf = GradientBoostingClassifier(n_estimators=100, learning_rate=1.0,
+                                 max_depth=1, random_state=42).fit(x_train, y_train)
+
+# %%
+from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier(max_depth=2, random_state=42, max_features="auto", class_weight="balanced")
+clf.fit(x_train, y_train)
+
+# %%
+test_pred_class = clf.predict(x_test)
+test_pred_prob = clf.predict_proba(x_test)[:, 1]
+
+# %%
+test_pred_prob
+
+# %%
+from sklearn.metrics import precision_score, recall_score, f1_score, roc_auc_score
+
+precision = precision_score(y_true=y_test, y_pred=test_pred_class, pos_label=1)
+recall = recall_score(y_true=y_test, y_pred=test_pred_class, pos_label=1)
+f1 = f1_score(y_true=y_test, y_pred=test_pred_class, pos_label=1)
+auc = roc_auc_score(y_true=y_test, y_score=test_pred_prob)
+
+# %%
+auc
+
+
+
+# %%
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import RandomizedSearchCV
+import numpy as np
+
+# %%
+# Number of trees in random forest
+n_estimators = [int(x) for x in np.linspace(start=100, stop=1000, num=10)]
+
+# Number of features to consider at every split
+max_features = ['log2', 'sqrt']
+
+# Maximum number of levels in tree
+max_depth = [int(x) for x in np.linspace(10, 100, num=10)]
+max_depth.append(None)
+
+# Minimum number of samples required to split a node
+min_samples_split = [2, 5, 10]
+
+# Minimum number of samples required at each leaf node
+min_samples_leaf = [1, 2, 4]
+
+# Create the random grid
+random_grid = {'n_estimators': n_estimators,
+               'max_features': max_features,
+               'max_depth': max_depth,
+               'min_samples_split': min_samples_split,
+               'min_samples_leaf': min_samples_leaf}
+print(random_grid)
+
+# %%
+# Use the random grid to search for best hyperparameters
+# First create the base model to tune
+rf_search = RandomForestClassifier(bootstrap=True,
+                                   class_weight="balanced",
+                                   random_state=42)
+
+# Random search of parameters, using 3 fold cross validation,
+# search across 100 different combinations, and use all available cores
+rf_random = RandomizedSearchCV(estimator=rf_search,
+                               param_distributions=random_grid,
+                               n_iter=100,
+                               cv=5,
+                               verbose=2,
+                               random_state=42,
+                               n_jobs=4)
+
+# %%
+# Fit the random search model
+rf_random.fit(x_train, y_train)
+
+# %%
+parameters = rf_random.best_params_
+
+clf = RandomForestClassifier(**parameters,
+    random_state=42,
+    bootstrap=True)
+
+clf.fit(x_train, y_train)
+
+# %%
+clf
