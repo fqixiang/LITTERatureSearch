@@ -5,7 +5,7 @@
 # %%
 import pandas as pd
 import base64
-import datetime
+#import datetime
 import io
 
 # %%
@@ -14,7 +14,7 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-import dash_table
+#import dash_table
 from dash.exceptions import PreventUpdate
 from model_functions import data_split_powerful, data_vectorizer_powerful, logistic_l1, find_highlight_word, feature_importance
 
@@ -82,7 +82,7 @@ card_step1_1 = [
         [
             html.H5("1. Upload your data set", className="card-title"),
             html.P(
-                "Your data set (in csv or xls) should contain at least the following columns: Title, Keywords, Abstract, Journal, Link and Relevance.",
+                "Your data set (in csv or xls) should contain at least the following columns: Title, Keywords, Abstract, Venue, Link and Relevance.",
                 className="card-text",
             ),
         ]
