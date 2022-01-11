@@ -5,8 +5,8 @@
 # %%
 import pandas as pd
 import base64
-#import datetime
 import io
+from datetime import datetime
 
 # %%
 import dash
@@ -14,9 +14,10 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_bootstrap_components as dbc
 from dash.dependencies import Input, Output, State
-#import dash_table
 from dash.exceptions import PreventUpdate
 from model_functions import data_split_powerful, data_vectorizer_powerful, logistic_l1, find_highlight_word, feature_importance
+from dash_extensions import Download
+from dash_extensions.snippets import send_data_frame
 
 # %%
 # external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -25,7 +26,33 @@ app = dash.Dash(__name__,
                 external_stylesheets=[dbc.themes.BOOTSTRAP],
                 prevent_initial_callbacks=True)
 
-# %% the ML model
+server = app.server
+
+# %% general warning
+warning =  dbc.Modal(
+            [
+                dbc.ModalHeader("Caution"),
+                dbc.ModalBody([html.P('''Hi! Welcome and thanks for your interest in this web app. 
+                '''),
+                               html.P('''You must have read our data challenge report and would like to check out whether 
+                               this app is as amazing as it is claimed. :)
+                               The answer is YES, but unfortunately only when it is run on a local computer. 
+                               Right now, this app is being hosted on a free server, which comes with very little RAM and traffic support.
+                               Because of this, the app is extremely slow. Even uploading and loading data will takes few seconds. 
+                               While running a prediction model on a regular laptop takes only a few seconds, it is going to take FOREVER 
+                               on the web. 
+                               
+                '''),
+                               html.P('''So, we are sorry to disappoint you but please don't be disheartened or take this web app too seriously. 
+                               We only deployed it here to show that we do have an app. :) Cheers.
+                                               ''')
+                               ]
+                    ),
+            ],
+            id="modal-warning",
+            centered=True,
+            is_open = True,
+        )
 
 
 # %%
@@ -245,7 +272,8 @@ tab1_content = html.Div([
          dcc.Store(id='memory_store'),
          dcc.Store(id='memory_store_key'),
          dcc.Store(id='memory_store_key_uncertain'),
-         dcc.Store(id='memory_word_ls')
+         dcc.Store(id='memory_word_ls'),
+         dcc.Store(id='prediction')
 
          ],
 #className="mt-3"
@@ -331,12 +359,18 @@ tab2_content = html.Div([
 
              dbc.Col(html.Div([html.Br(),
                       dbc.Button("I would like to annotate more!", color="success", className="mr-1", block=True, disabled=False, id='choice1-annotate'),
-                      dbc.Button("I would like to save the annotated results.", color="success", active=True, className="mr-1", block=True, disabled=False, id='choice2-save'),
-                      dbc.Button("I am happy and would like to save the prediction results.", color="success", disabled=False, block=True, id='choice3-done'),
+                      html.Div([dbc.Button("I would like to save the annotated results.", color="success", active=True, className="mr-1", block=True, disabled=False, id='choice2-save'),
+                                Download(id="download-annotated")]),
+                      html.Div([dbc.Button("I am happy and would like to save the prediction results.", color="success", disabled=False, block=True, id='choice3-done'),
+                                Download(id="download-prediction")]),
                       html.Br(),
                       dbc.Alert('''Great that you would like to annotate more papers! This time, however, 
                       you can speed things up by using two ML-assisted features for annotation. Go back to Step 1 and you should see the options available now.''',
-                                is_open=False, id='choice1-alert')
+                                is_open=False, id='choice1-alert'),
+                      dbc.Alert('''Awesome! In the saved file, you will see three extra columns: "Prob", "CLS" and "Certainty". 
+                      "Prob" is the estimated probability of a paper being relevant. "CLS" is the corresponding classification outcome (with a cut-off at 0.5). 
+                      "Certainty" is how certain the model is about a classification.''',
+                                is_open=False, id='choice3-alert')
                       ]), width=4)])
 ])
 
@@ -388,6 +422,7 @@ tab3_content = html.Div([
 
 
 app.layout = html.Div(children=[
+    warning,
     dbc.Row([dbc.Col(dbc.Card(card_title, color="primary", inverse=True))]),
 
     dbc.Tabs(
@@ -620,6 +655,7 @@ def model_wait_alert(n_clicks):
               Output('f1', 'children'),
               Output('auc', 'children'),
               Output('memory_store_key_uncertain', 'data'),
+              Output('prediction', 'data'),
               Output('memory_word_ls', 'data'),
               Output('feature_importance', 'figure'),
               Input('run_model', 'n_clicks'),
@@ -637,11 +673,11 @@ def run_model(n_click, jsonified_data, annotation, annotated_keys):
                                           'Relevance': annotation_ls})
 
             # n rows with na before
-            n_row_annotated_old = df.Relevance.isna().sum()
+            # n_row_annotated_old = df.Relevance.isna().sum()
 
             # update with new annotations
             df.update(df.drop('Relevance', axis=1).merge(df_annotation, 'left', 'Key'))
-            n_row_annotated_new = df.Relevance.isna().sum()
+            # n_row_annotated_new = df.Relevance.isna().sum()
 
         # data preprocessing
         dataset_train, dataset_test, dataset_new = data_split_powerful(df, seed=123, test_size=.20)
@@ -665,10 +701,11 @@ def run_model(n_click, jsonified_data, annotation, annotated_keys):
 
         # predictions on the remaining data
         new_prob = results['model'].predict_proba(x_new)[:, 1]
+        new_cls = results['model'].predict(x_new)
         new_key = dataset_new.Key.to_list()
 
-        df_prediction = pd.DataFrame({'Key': new_key, 'Prob': new_prob})
-        df_prediction = df_prediction.assign(Certainty=abs(df_prediction.Prob - 0.5))
+        df_prediction = pd.DataFrame({'Key': new_key, 'Prob': new_prob, 'CLS': new_cls})
+        df_prediction = df_prediction.assign(Certainty=abs(df_prediction.Prob - 0.5)*2)
         new_keys = df_prediction.sort_values(by=['Certainty'], ascending=True).Key.to_list()
         new_keys = ' '.join(key for key in new_keys)
 
@@ -680,7 +717,8 @@ def run_model(n_click, jsonified_data, annotation, annotated_keys):
 
         word_ls = ' '.join(word for word in word_ls)
 
-        return model_finished_alert, baseline, accuracy, balanced_acc, precision, recall, f1, auc, new_keys, word_ls, feature_fig
+        return model_finished_alert, baseline, accuracy, balanced_acc, precision, recall, f1, auc, new_keys, \
+               df_prediction.to_json(date_format='iso', orient='split'), word_ls, feature_fig
 
     else:
         return None, None, None, None, None, None, None, None, None
@@ -693,6 +731,12 @@ def choice1_alert(n_clicks):
     if n_clicks > 0:
         return True, True
 
+@app.callback(Output('choice3-alert', 'is_open'),
+              Input('choice3-done', 'n_clicks'))
+def choice3_alert(n_clicks):
+    if n_clicks > 0:
+        return True
+
 
 @app.callback(
     Output("modal-centered", "is_open"),
@@ -704,7 +748,61 @@ def toggle_modal(n1, n2, is_open):
         return not is_open
     return is_open
 
+# to download annotated files
+@app.callback(Output("download-annotated", "data"),
+              Input("choice2-save", "n_clicks"),
+              State('output-data-upload', 'children'),
+              State('memory_store', 'data'),
+              State('memory_store_key', 'data'))
+def generate_annotation_csv(n_nlicks, jsonified_data, annotation, annotated_keys):
 
+    df = pd.read_json(jsonified_data, orient='split')
+
+    if annotation is not None:
+        annotation_ls = [int(integer) for integer in annotation]
+        key_ls = annotated_keys.split()
+        df_annotation = pd.DataFrame({'Key': key_ls,
+                                      'Relevance': annotation_ls})
+
+        # update with new annotations
+        df.update(df.drop('Relevance', axis=1).merge(df_annotation, 'left', 'Key'))
+
+    now = datetime.now()
+    date_time = now.strftime("%Y%m%d-%H%M%S")
+    save_name = "annotated" + date_time + '.csv'
+
+    return send_data_frame(df.to_csv, filename=save_name, index=False, encoding="utf-8-sig")
+
+
+# to download prediction files
+@app.callback(Output("download-prediction", "data"),
+              Input("choice3-done", "n_clicks"),
+              State('output-data-upload', 'children'),
+              State('memory_store', 'data'),
+              State('memory_store_key', 'data'),
+              State('prediction', 'data'))
+def generate_prediction_csv(n_nlicks, jsonified_data, annotation, annotated_keys, prediction):
+
+    df_old = pd.read_json(jsonified_data, orient='split')
+    df_prediction = pd.read_json(prediction, orient='split')
+
+    if annotation is not None:
+        annotation_ls = [int(integer) for integer in annotation]
+        key_ls = annotated_keys.split()
+        df_annotation = pd.DataFrame({'Key': key_ls,
+                                      'Relevance': annotation_ls})
+
+        # update with new annotations
+        df_old.update(df_old.drop('Relevance', axis=1).merge(df_annotation, 'left', 'Key'))
+
+    if prediction is not None:
+        df_complete = df_old.merge(df_prediction, 'left', 'Key')
+
+    now = datetime.now()
+    date_time = now.strftime("%Y%m%d-%H%M%S")
+    save_name = "prediction" + date_time + '.csv'
+
+    return send_data_frame(df_complete.to_csv, filename=save_name, index=False, encoding="utf-8-sig")
 
 if __name__ == '__main__':
     app.run_server(debug=True)

@@ -9,15 +9,6 @@ from nltk.stem.porter import *
 import plotly.graph_objects as go
 from sklearn.inspection import permutation_importance
 
-# from nltk import word_tokenize
-# from nltk.stem import WordNetLemmatizer
-#
-# class LemmaTokenizer:
-#     def __init__(self):
-#         self.wnl = WordNetLemmatizer()
-#     def __call__(self, doc):
-#         return [self.wnl.lemmatize(t) for t in word_tokenize(doc)]
-
 
 def data_split(dataset, seed, test_size):
     dataset_train, dataset_test = train_test_split(dataset, test_size=test_size, random_state=seed)
